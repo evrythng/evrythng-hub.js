@@ -1,0 +1,24 @@
+{
+  "name": "evrythng-hub",
+  "version": "3.1.0",
+  "main": "dist/evrythng-hub.js",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tools",
+    "lib",
+    "src",
+    "*.html",
+    "build.txt",
+    "DEVELOPMENT.md",
+    "karma*.js",
+    "Gruntfile.js"
+  ],
+  "license": "Apache-2.0",
+  "endpoint": "https://github.com/evrythng/evrythng-hub.js.git",
+  "dependencies": {
+    "evrythng": "^3.1.0"
+  }
+}
