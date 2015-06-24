@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "3.1.0",
+  "version": "1.0.0",
   "main": "dist/evrythng-hub.js",
   "ignore": [
     "**/.*",
