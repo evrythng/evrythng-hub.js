@@ -63,9 +63,9 @@ EVT.use(hub);
 
 ### Examples
 
-```
+```javascript
 // After loading the plugin, using any of the methods above, you should provide the 
-Thng-Hub local API url to the Hub plugin
+// Thng-Hub local API url to the Hub plugin
 Hub.setup({
   apiUrl: 'http://192.168.0.12:8080',
   timeout: 1000,    // local request timeout before switching to remote host
