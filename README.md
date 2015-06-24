@@ -46,7 +46,7 @@ require(['evrythng', 'evrythng-hub'], function (EVT, Hub) {
 ### With Browser Globals
 
 ```javascript
-// The plugin is attached as EVT.HubPlugin
+// The plugin is attached as EVT.Hub
 EVT.use(EVT.Hub);
 ...
 ```
