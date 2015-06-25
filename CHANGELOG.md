@@ -1,3 +1,9 @@
+# v1.0.2 (25-06-2015)
+
+## Features
+
+- **documentation**: updated documentation with consistent format from other libs.
+
 # v1.0.1 (24-06-2015)
 
 ## Bug Fixes

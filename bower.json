@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/evrythng-hub.js",
   "ignore": [
     "**/.*",
@@ -19,6 +19,6 @@
   "license": "Apache-2.0",
   "endpoint": "https://github.com/evrythng/evrythng-hub.js.git",
   "dependencies": {
-    "evrythng": "^3.1.1"
+    "evrythng": "^3.1.2"
   }
 }
