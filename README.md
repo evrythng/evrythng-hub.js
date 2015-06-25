@@ -87,9 +87,11 @@ EVT.use(EVT.Hub);
 ...
 ```
 
-### Examples
+## Examples
 
-```
+#### General
+
+```javascript
 // After loading the plugin, using any of the methods above, you 
 // should provide the Thng-Hub local API url to the Hub plugin (below are defaults)
 Hub.setup({
