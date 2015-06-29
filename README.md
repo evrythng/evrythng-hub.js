@@ -16,7 +16,7 @@ in all contexts (Browser AMD, Node.js, Browser globals).
 
 ##### With [Bower](http://bower.io/)
 
-    bower install evrythng-hub --save-dev
+    bower install evrythng-hub --save
     
 The Bower package is [AMD](http://requirejs.org/docs/whyamd.html)-compatible. This means you can load 
 it asynchronously using tools like [Require.js](http://requirejs.org/) or simply dropping the script tag 
@@ -47,7 +47,7 @@ Respectively:
     
 ### Node.js
 
-    npm install evrythng-hub --save-dev
+    npm install evrythng-hub --save
 
 ## Usage
 
