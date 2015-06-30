@@ -20,5 +20,6 @@
   "endpoint": "https://github.com/evrythng/evrythng-hub.js.git",
   "dependencies": {
     "evrythng": "^3.1.2"
-  }
+  },
+  "private": true
 }
