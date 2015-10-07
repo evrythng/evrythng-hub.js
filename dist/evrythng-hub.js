@@ -23,6 +23,7 @@
 //  - .actionType().read()
 
 (function (root, factory) {
+  'use strict';
 
   if (typeof define === 'function' && define.amd) {
 
@@ -44,14 +45,13 @@
 }(this, function () {
   'use strict';
 
-  // Version of plugin maintained in sync with every release of evt.js
-  var version = '1.0.2';
+  var version = '1.0.3';
 
 
   // Setup default settings:
 
-  // = ***apiUrl**: Local Thng-Hub API URL
-  // - ***timeout**: Timeout in milliseconds for local requests, before switching to remote*
+  // - _**apiUrl**: Local Thng-Hub API URL_
+  // - _**timeout**: Timeout in milliseconds for local requests, before switching to remote_
   var defaultSettings = {
     apiUrl: 'http://localhost:8080',
     timeout: 1000,
@@ -122,9 +122,6 @@
 
     settings: defaultSettings,
 
-    // Modules that this plugin requires. Injected into the install method.
-    requires: ['core'],
-
     // Setup new settings.
     setup: function (customSettings) {
       if (Object.prototype.toString.call(customSettings) === '[object Object]') {
@@ -149,8 +146,8 @@
 
       // Patch .api() method...
       EVT.api = function (options) {
-        var remote = options.remote !== undefined? options.remote : EVTHubPlugin.settings.remote;
-        if(remote){
+        var remote = options.remote !== undefined ? options.remote : $this.settings.remote;
+        if (remote) {
           return originalApi.apply(null, arguments);
         }
 
@@ -162,12 +159,12 @@
         // Check if it is a local request. Path and method should exist
         // in the mapping above.
         for (var i = 0; i < localEndpoints.length; i++) {
-          if(localEndpoints[i].path.test(path) && localEndpoints[i].method.indexOf(method) !== -1){
+          if (localEndpoints[i].path.test(path) && localEndpoints[i].method.indexOf(method) !== -1) {
             break;
           }
         }
 
-        if(i < localEndpoints.length){
+        if (i < localEndpoints.length) {
           // Is local endpoint / supported by thng-hub
 
           // Use local request settings
@@ -192,7 +189,12 @@
 
       };
     }
+
   };
 
+  // Modules that this plugin requires. Injected into the install method.
+  EVTHubPlugin.$inject = ['core'];
+
   return EVTHubPlugin;
+
 }));

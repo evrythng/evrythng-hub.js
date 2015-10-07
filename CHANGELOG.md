@@ -1,3 +1,9 @@
+# v1.0.3 (07-10-2015)
+
+## Bug fixes
+
+- **Plugin API**: updated to conform with the Plugin API (`$inject` instead of `requires for dependencies).
+
 # v1.0.2 (25-06-2015)
 
 ## Features
