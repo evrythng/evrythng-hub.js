@@ -1,8 +1,8 @@
 {
   "name": "evrythng-hub",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "main": "lib/evrythng-hub.js",
-  "description": "Evrythng.js Hub plugin for transparent local Thng-Hub requests",
+  "description": "Javascript SDK to communicate with EVRYTHNG REST API",
   "repository": {
     "type": "git",
     "url": "git://github.com/evrythng/evrythng-hub.js.git"
@@ -18,9 +18,10 @@
     "web of things",
     "thng-hub",
     "hub",
-    "mqtt"
+    "mqtt",
+    "thng-scan",
+    "scanthng"
   ],
-  "author": "EVRYTHNG Ltd.",
   "licenses": [
     {
       "type": "Apache-2.0",
@@ -29,7 +30,7 @@
   ],
   "readmeFilename": "README.md",
   "dependencies": {
-    "evrythng": "^3.1.2"
+    "evrythng": "^3.3.1"
   },
   "ignore": [
     "dist"
