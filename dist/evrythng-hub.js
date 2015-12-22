@@ -1,10 +1,10 @@
 // ## EVRYTHNG-HUB.JS Plugin
 
-// This is plugin allows the evrythng.js to communicate to a local API
+// This plugin allows the evrythng.js to communicate to a local API
 // if available (e.g. inside home), and retry to the cloud if the specified
 // API is not available (e.g. outside home).
 
-// The following methods support local requests:
+// The following methods support local HTTP requests:
 
 //  - .thng('{thngId}').read()
 //  - .thng('{thngId}').property('{propertyName}').read()
@@ -22,38 +22,83 @@
 
 //  - .actionType().read()
 
+// ### Pubsub
+
+// Can be used on top of evrythng-ws.js and evrythng-mqtt.js to provide
+// the ability to connect to local WS and MQTT servers as well.
+
 (function (root, factory) {
   'use strict';
 
   if (typeof define === 'function' && define.amd) {
 
-    // AMD.
-    define(factory());
+    // AMD
+
+    // Define optional RequireJS plugin first.
+    // http://stackoverflow.com/a/27422370/130480
+    define("optional", [], {
+      load: function (moduleName, parentRequire, onload) {
+
+        var onLoadSuccess = function (moduleInstance) {
+          onload(moduleInstance);
+        };
+
+        var onLoadFailure = function (err) {
+          var failedId = err.requireModules && err.requireModules[0];
+
+          // Undefine the module to cleanup internal stuff.
+          requirejs.undef(failedId);
+          define(failedId, [], function () {
+          });
+          parentRequire([failedId], onLoadSuccess);
+        };
+
+        parentRequire([moduleName], onLoadSuccess, onLoadFailure);
+      }
+    });
+
+    // evrythng-ws dependency is optional.
+    define(['optional!evrythng-ws'], function (WS) {
+      return factory(undefined, WS);
+    });
 
   } else if (typeof exports === 'object') {
 
     // Node/CommonJS
-    module.exports = factory();
+
+    // evrythng-mqtt depdency is optional.
+    var MQTT;
+    try {
+      MQTT = require('evrythng-mqtt');
+    } catch (e) {
+      MQTT = undefined;
+    }
+    module.exports = factory(MQTT, undefined);
 
   } else {
 
     // Browser globals
-    root.EVT.Hub = root.Evrythng.Hub = factory();
+    root.EVT.Hub = root.Evrythng.Hub = factory(undefined, root.EVT.WS);
 
   }
 
-}(this, function () {
+}(this, function (MQTT, WS) {
   'use strict';
 
-  var version = '1.0.3';
+  var version = '1.1.0';
 
 
   // Setup default settings:
 
-  // - _**apiUrl**: Local Thng-Hub API URL_
+  // - _**httpApiUrl**: Local Thng-Hub HTTP API URL_
+  // - _**mqttApiUrl**: Local Thng-Hub MQTT API URL_
+  // - _**wsApiUrl**: Local Thng-Hub Web Socket API URL_
   // - _**timeout**: Timeout in milliseconds for local requests, before switching to remote_
+  // - _**remote**: Explicitly switch the requests to use the default remote/cloud URLs_
   var defaultSettings = {
-    apiUrl: 'http://localhost:8080',
+    httpApiUrl: 'http://localhost:8787',
+    mqttApiUrl: 'mqtt://localhost:4001/mqtt',
+    wsApiUrl: 'ws://localhost:4000/mqtt',
     timeout: 1000,
     remote: false
   };
@@ -76,9 +121,9 @@
       path: /^\/thngs\/[^\/]+\/properties$/,
       method: ['post', 'get', 'put']
     }, {
-      //.thng('{thngId}').property('{propertyName}').read/create/update()
+      //.thng('{thngId}').property('{propertyName}').read/update()
       path: /^\/thngs\/[^\/]+\/properties\/[^\/]+$/,
-      method: ['post', 'get', 'put']
+      method: ['get', 'put']
     }, {
       //.thng('{thngId}').action('{actionType}').read/create()
       path: /^\/thngs\/[^\/]+\/actions\/[^\/]+$/,
@@ -129,6 +174,14 @@
         // Override default settings with new ones
         for (var i in customSettings) {
           if (customSettings.hasOwnProperty(i)) {
+
+            // TODO deprecate
+            if (i === 'apiUrl') {
+              console.warn('[EvrythngJS Hub] apiUrl option has been deprecated. Use httpApiUrl instead.');
+              this.settings.httpApiUrl = customSettings[i];
+              continue;
+            }
+
             this.settings[i] = customSettings[i];
           }
         }
@@ -140,15 +193,20 @@
       return this.settings;
     },
 
-    install: function (EVT) {
-      var $this = this;
-      var originalApi = EVT.api;
+    install: function (EVT, Resource) {
+      var $this = this,
+        pubSubPlugin = MQTT || WS;
 
-      // Patch .api() method...
-      EVT.api = function (options) {
+      var original = {
+        api: EVT.api,
+        subscribe: Resource.prototype.subscribe,
+        publish: Resource.prototype.publish
+      };
+
+      function localApi(options) {
         var remote = options.remote !== undefined ? options.remote : $this.settings.remote;
         if (remote) {
-          return originalApi.apply(null, arguments);
+          return original.api.apply(EVT, arguments);
         }
 
         // Get only the path (no query strings, etc.)
@@ -168,32 +226,74 @@
           // Is local endpoint / supported by thng-hub
 
           // Use local request settings
-          options.apiUrl = $this.settings.apiUrl;
+          options.apiUrl = $this.settings.httpApiUrl;
           options.timeout = $this.settings.timeout;
 
-          return originalApi.apply(null, args).catch(function () {
+          return original.api.apply(EVT, args).catch(function (err) {
 
-            // User original settings
+            if (pubSubPlugin && err && err.cancelled) {
+              return;
+            }
+
+            // Use original settings.
             delete options.apiUrl;
             delete options.timeout;
 
-            return originalApi.apply(null, args);
+            return original.api.apply(EVT, args);
+
           });
 
         } else {
 
           // Normal request
-          return originalApi.apply(null, args);
+          return original.api.apply(EVT, args);
 
         }
+      }
 
-      };
+      function localPubsubMethod(method) {
+        return function () {
+          if ($this.settings.remote) {
+            return original[method].apply(this, arguments);
+          }
+
+          var remoteApiUrl = pubSubPlugin.settings.apiUrl,
+            localApiUrl = pubSubPlugin === MQTT ? $this.settings.mqttApiUrl : $this.settings.wsApiUrl,
+            $resource = this,
+            args = arguments;
+
+          // Try local endpoint first.
+          pubSubPlugin.setup({
+            apiUrl: localApiUrl
+          });
+
+          return original[method].apply($resource, args).catch(function () {
+
+            // Fallback to remote endpoint.
+            pubSubPlugin.setup({
+              apiUrl: remoteApiUrl
+            });
+
+            return original[method].apply($resource, args);
+          });
+        };
+      }
+
+      // Patch .api() method.
+      EVT.api = localApi;
+
+      // Patch Pubsub methods.
+      // Unsubscribe does not create any connection.
+      if (pubSubPlugin) {
+        Resource.prototype.subscribe = localPubsubMethod('subscribe');
+        Resource.prototype.publish = localPubsubMethod('publish');
+      }
     }
 
   };
 
   // Modules that this plugin requires. Injected into the install method.
-  EVTHubPlugin.$inject = ['core'];
+  EVTHubPlugin.$inject = ['core', 'resource'];
 
   return EVTHubPlugin;
 

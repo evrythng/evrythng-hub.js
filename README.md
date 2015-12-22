@@ -30,7 +30,7 @@ See [Usage](#usage) below for more details.
 
 Add the script tag into your HTML page:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.0.3.min.js"></script>
+    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.1.0.min.js"></script>
  
 Or always get the last release:
 
@@ -39,7 +39,7 @@ Or always get the last release:
     
 For HTTPS you need to use:
 
-    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.0.3.min.js"></script>
+    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.1.0.min.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
     
@@ -93,7 +93,7 @@ EVT.use(EVT.Hub);
 // After loading the plugin, using any of the methods above, you 
 // should provide the Thng-Hub local API url to the Hub plugin (below are defaults)
 Hub.setup({
-  apiUrl: 'http://192.168.0.12:8080',
+  httpApiUrl: 'http://192.168.0.12:8080',
   timeout: 1000,        // local request timeout before switching to remote host
   remote: false         // make local requests by default (only to thng-hub endpoints)
 });

@@ -1,3 +1,14 @@
+# v1.1.0 (22-12-2015)
+
+## Features
+
+- **Pubsub integration**: connect to local Thng-Hub's WS/MQTT server.
+
+## Changes
+
+- **apiUrl**: renamed setting to httpApiUrl, as wsApiUrl and mqttApiUrl are now available.
+Old setting still accepted with deprecation warning.
+
 # v1.0.3 (07-10-2015)
 
 ## Bug fixes
