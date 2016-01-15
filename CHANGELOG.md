@@ -1,3 +1,9 @@
+# v1.1.1 (15-01-2016)
+
+## Changes
+
+- **Docs**: update README instructions for using MQTT/WS plugin with the Hub.
+
 # v1.1.0 (22-12-2015)
 
 ## Features
