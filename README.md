@@ -117,6 +117,37 @@ user.thng('{thngId}').property('{propertyKey}').update(123, { remote: true }).th
 ...
 ```
 
+#### Usage with MQTT/WS plugins
+
+**Note:** In order to connect to Thng-Hub over MQTT/WebSockets you will need to add and install [`evrythng-mqtt.js`](https://github.com/evrythng/evrythng-mqtt.js)
+ or [`evrythng-ws.js`](https://github.com/evrythng/evrythng-ws.js) together with **evrythng-hub**. 
+ Refer to these dependencies READMEs for installation and usage instructions.
+
+When using the MQTT or WS plugin, the Hub plugin will first try to connect to the specified local hub URL (configured in
+the settings) and falls back to the remote cloud URL if it fails, making it transparent for the developer and application user
+if they are talking to the local Hub or the cloud API.
+
+```javascript
+// Install both plugins. Hub plugin should come after MQTT/WS.
+EVT.use(mqtt).use(hub);
+
+// Setup local MQTT and/or WS url, if needed. Hub plugin already comes with Thng-Hub defaults.
+hub.setup({
+  httpApiUrl: 'http://192.168.0.12:8787',
+  mqttApiUrl: 'mqtt://192.168.0.12:4001/mqtt',
+  wsApiUrl: 'ws://192.168.0.12:4000/mqtt'
+});
+
+// Make requests and subscriptions as if you were talking to the cloud.
+// Init app and user (see https://github.com/evrythng/evrythng.js)
+...
+
+user.thng('{thndId}').property('temperature').subscribe(function(tempUpdate){
+  // Update coming from Thng-Hub or directly from the cloud.
+  console.log(tempUpdate);
+});
+```
+
 ---
 
 ## Documentation
