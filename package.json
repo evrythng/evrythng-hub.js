@@ -30,7 +30,9 @@
   ],
   "readmeFilename": "README.md",
   "dependencies": {
-    "evrythng": "^3.4.3"
+    "evrythng": "^3.4.3",
+    "jsrsasign": "5.0.5",
+    "node-jose": "0.7.0"
   },
   "ignore": [
     "dist"
