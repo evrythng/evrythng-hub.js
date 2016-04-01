@@ -1,3 +1,9 @@
+# v1.2.1 (01-04-2016)
+
+## Bug fixes
+
+- **package.json**: Add missing dependencies.
+
 # v1.2.0 (01-04-2016)
 
 ## Changes
