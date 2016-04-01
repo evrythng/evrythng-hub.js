@@ -1,3 +1,9 @@
+# v1.2.0 (01-04-2016)
+
+## Changes
+
+- **Secure mode**: Support Thng-Hub local encryption mechanism (HTTP, MQTT/WS).
+
 # v1.1.1 (15-01-2016)
 
 ## Changes

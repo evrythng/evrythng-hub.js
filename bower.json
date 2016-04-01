@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "main": "dist/evrythng-hub.js",
   "ignore": [
     "**/.*",
@@ -13,8 +13,11 @@
     "Gruntfile.js"
   ],
   "license": "Apache-2.0",
+  "description": "Evrythng.js Hub plugin for transparent local Thng-Hub requests",
   "endpoint": "https://github.com/evrythng/evrythng-hub.js.git",
   "dependencies": {
-    "evrythng": "^3.4.2"
+    "jsrsasign": "5.0.5",
+    "node-jose-browserified": "0.7.0",
+    "evrythng": "^3.4.3"
   }
 }
