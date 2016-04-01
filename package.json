@@ -1,8 +1,8 @@
 {
   "name": "evrythng-hub",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "main": "lib/evrythng-hub.js",
-  "description": "Javascript SDK to communicate with EVRYTHNG REST API",
+  "description": "Evrythng.js Hub plugin for transparent local Thng-Hub requests",
   "repository": {
     "type": "git",
     "url": "git://github.com/evrythng/evrythng-hub.js.git"
@@ -30,7 +30,7 @@
   ],
   "readmeFilename": "README.md",
   "dependencies": {
-    "evrythng": "^3.4.2"
+    "evrythng": "^3.4.3"
   },
   "ignore": [
     "dist"
