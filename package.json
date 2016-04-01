@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "main": "lib/evrythng-hub.js",
   "description": "Evrythng.js Hub plugin for transparent local Thng-Hub requests",
   "repository": {
