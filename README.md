@@ -90,7 +90,7 @@ EVT.use(EVT.Hub);
 #### General 
 
 ```javascript
-// After loading the plugin, using any of the methods above, you 
+// Before loading the plugin, using any of the methods above, you 
 // should provide the THNGHUB local API url to the Hub plugin (below are defaults)
 Hub.setup({
   httpApiUrl: 'http://192.168.0.12:8080',
@@ -98,6 +98,7 @@ Hub.setup({
   remote: false         // make local requests by default (only to THNGHUB endpoints)
 });
 
+EVT.use(EVT.Hub);
 // Init app and user (see https://github.com/evrythng/evrythng.js)
 ...
 
