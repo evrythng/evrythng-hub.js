@@ -1,3 +1,9 @@
+# v1.2.2 (04-05-2016)
+
+## Bug fixes
+
+- **Geolocation support**: Allow to use geolocation in secure mode.
+
 # v1.2.1 (01-04-2016)
 
 ## Bug fixes

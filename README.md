@@ -30,7 +30,7 @@ See [Usage](#usage) below for more details.
 
 Add the script tag into your HTML page:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.1.min.js"></script>
+    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.2.min.js"></script>
  
 Or always get the last release:
 
@@ -39,7 +39,7 @@ Or always get the last release:
     
 For HTTPS you need to use:
 
-    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.1.min.js"></script>
+    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.2.min.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
     
@@ -90,7 +90,7 @@ EVT.use(EVT.Hub);
 #### General 
 
 ```javascript
-// Before loading the plugin, using any of the methods above, you 
+// After loading the plugin, using any of the methods above, you 
 // should provide the THNGHUB local API url to the Hub plugin (below are defaults)
 Hub.setup({
   httpApiUrl: 'http://192.168.0.12:8080',
@@ -98,7 +98,6 @@ Hub.setup({
   remote: false         // make local requests by default (only to THNGHUB endpoints)
 });
 
-EVT.use(EVT.Hub);
 // Init app and user (see https://github.com/evrythng/evrythng.js)
 ...
 
@@ -129,15 +128,15 @@ the settings) and falls back to the remote cloud URL if it fails, making it tran
 if they are talking to the local Hub or the cloud API.
 
 ```javascript
+// Install both plugins. Hub plugin should come after MQTT/WS.
+EVT.use(mqtt).use(hub);
+
 // Setup local MQTT and/or WS url, if needed. Hub plugin already comes with THNGHUB defaults.
 hub.setup({
   httpApiUrl: 'http://192.168.0.12:8787',
   mqttApiUrl: 'mqtt://192.168.0.12:4001/mqtt',
   wsApiUrl: 'ws://192.168.0.12:4000/mqtt'
 });
-
-// Install both plugins. Hub plugin should come after MQTT/WS.
-EVT.use(mqtt).use(hub);
 
 // Make requests and subscriptions as if you were talking to the cloud.
 // Init app and user (see https://github.com/evrythng/evrythng.js)
@@ -159,14 +158,14 @@ and [jsrsasign](https://github.com/kjur/jsrsasign) installed. These dependencies
 loaded into `node_modules` or `bower_components` folder when you install the plugin via `npm`/`bower`.
 
 ```javascript
+// Install Hub plugin.
+EVT.use(hub);
+
 hub.setup({
   httpApiUrl: 'http://localhost:8787',
   secure: true,
   hubId: 'hubId' // thng ID that corresponds to the Hub
 });
-
-// Install Hub plugin.
-EVT.use(hub);
 
 user.thng().read().then(function (thngs) {
   console.log(thngs);
