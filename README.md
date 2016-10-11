@@ -30,7 +30,7 @@ See [Usage](#usage) below for more details.
 
 Add the script tag into your HTML page:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.2.min.js"></script>
+    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.3.min.js"></script>
  
 Or always get the last release:
 
@@ -39,7 +39,7 @@ Or always get the last release:
     
 For HTTPS you need to use:
 
-    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.2.min.js"></script>
+    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.3.min.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
     
@@ -89,32 +89,37 @@ EVT.use(EVT.Hub);
 
 #### General 
 
+After loading the plugin, using any of the methods above, you should provide the
+THNGHUB local API url to the Hub plugin (below are defaults):
+
 ```javascript
-// After loading the plugin, using any of the methods above, you 
-// should provide the THNGHUB local API url to the Hub plugin (below are defaults)
 Hub.setup({
   httpApiUrl: 'http://192.168.0.12:8080',
   timeout: 1000,        // local request timeout before switching to remote host
   remote: false         // make local requests by default (only to THNGHUB endpoints)
 });
+```
 
-// Init app and user (see https://github.com/evrythng/evrythng.js)
-...
+Read local Thngs (if THNGHUB is accessible):
 
-// Read local thngs if THNGHUB is accessible
+```javascript
 user.thng().read().then(function(thngs){
   console.log(thngs);
 });
+```
 
-// Read remote thngs explicitly
+Read remote Thngs explicitly:
+
+```javascript
 user.thng().read({ remote: true }).then(function(thngs){
   console.log(thngs);
 });
+```
 
-// Update thng property remotely
-user.thng('{thngId}').property('{propertyKey}').update(123, { remote: true }).then(...);
+Update a Thng property remotely:
 
-...
+```javascript
+user.thng('{thngId}').property('{propertyKey}').update(value, { remote: true }).then(...);
 ```
 
 #### Usage with MQTT/WS plugins
@@ -127,21 +132,25 @@ When using the MQTT or WS plugin, the Hub plugin will first try to connect to th
 the settings) and falls back to the remote cloud URL if it fails, making it transparent for the developer and application user
 if they are talking to the local Hub or the cloud API.
 
-```javascript
-// Install both plugins. Hub plugin should come after MQTT/WS.
-EVT.use(mqtt).use(hub);
+Install both plugins. Hub plugin should come after MQTT/WS.
 
-// Setup local MQTT and/or WS url, if needed. Hub plugin already comes with THNGHUB defaults.
+```javascript
+EVT.use(mqtt).use(hub);
+```
+
+Setup local MQTT and/or WS url, if needed. Hub plugin already comes with THNGHUB defaults.
+
+```javascript
 hub.setup({
   httpApiUrl: 'http://192.168.0.12:8787',
   mqttApiUrl: 'mqtt://192.168.0.12:4001/mqtt',
   wsApiUrl: 'ws://192.168.0.12:4000/mqtt'
 });
+```
 
-// Make requests and subscriptions as if you were talking to the cloud.
-// Init app and user (see https://github.com/evrythng/evrythng.js)
-...
+Make requests and subscriptions as if you were talking to the cloud.
 
+```javascript
 user.thng('{thndId}').property('temperature').subscribe(function(tempUpdate){
   // Update coming from THNGHUB or directly from the cloud.
   console.log(tempUpdate);

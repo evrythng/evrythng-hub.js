@@ -1,3 +1,9 @@
+# v1.2.3 (10-10-2016)
+
+## Bug fixes
+
+- **Interceptors**: merge globally defined interceptors
+
 # v1.2.2 (04-05-2016)
 
 ## Bug fixes

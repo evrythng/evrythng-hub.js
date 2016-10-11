@@ -104,7 +104,7 @@
 }(this, function (MQTT, WS, JWT, Jose) {
   'use strict';
 
-  var version = '1.2.2';
+  var version = '1.2.3';
 
   // Setup default settings:
 
@@ -423,7 +423,7 @@
           request: buildEncrypted // Encrypt apiKey/payload (secure mode)
         }];
 
-        options.interceptors = interceptors.concat(options.interceptors || []);
+        options.interceptors = interceptors.concat(options.interceptors || []).concat(EVT.settings.interceptors || []);
 
         return original.api.apply(EVT, args)
           .catch(function (err) {
