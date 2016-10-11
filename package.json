@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "main": "lib/evrythng-hub.js",
   "description": "Evrythng.js Hub plugin for transparent local Thng-Hub requests",
   "repository": {
@@ -30,7 +30,7 @@
   ],
   "readmeFilename": "README.md",
   "dependencies": {
-    "evrythng": "^3.4.4",
+    "evrythng": "^4.0.1",
     "jsrsasign": "5.0.5",
     "node-jose": "0.7.0"
   },
