@@ -30,7 +30,7 @@ See [Usage](#usage) below for more details.
 
 Add the script tag into your HTML page:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.3.min.js"></script>
+    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-1.3.0.min.js"></script>
  
 Or always get the last release:
 
@@ -39,7 +39,7 @@ Or always get the last release:
     
 For HTTPS you need to use:
 
-    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.2.3.min.js"></script>
+    <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub-1.3.0.min.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
     <script src="//d10ka0m22z5ju5.cloudfront.net/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
     
@@ -172,7 +172,10 @@ EVT.use(hub);
 
 hub.setup({
   httpApiUrl: 'http://localhost:8787',
-  secure: true,
+  secure: {
+    request: true,
+    response: false
+  },
   hubId: 'hubId' // thng ID that corresponds to the Hub
 });
 
@@ -180,6 +183,19 @@ user.thng().read().then(function (thngs) {
   console.log(thngs);
 });
 ```
+
+The default THNGHUb encryption is to decrypt requests, but leave responses as plain JSON. This is also the default
+for this Hub plugin, as seen above. However, if you want to talk to an unencrypted or full encrypted THNGHUB, the
+settings need to be changed to:
+
+```javascript
+hub.setup({
+  secure: false | true, // false for no encryption, true for full encryption (requests and responses)
+  hubId: 'hubId' // thng ID that corresponds to the Hub
+});
+```
+
+**Note: The `hubId` property is mandatory for any kind of encryption.**
 
 ---
 

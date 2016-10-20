@@ -1,3 +1,9 @@
+# v1.3.0 (20-10-2016)
+
+## Features
+
+- **Secure mode**: Support for half encryption (i.e. encrypt only requests) - default mode of Thng-Hub.
+
 # v1.2.3 (10-10-2016)
 
 ## Bug fixes
