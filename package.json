@@ -1,6 +1,6 @@
 {
   "name": "evrythng-hub",
-  "version": "2.0.0-pre.0",
+  "version": "3.0.0-pre.0",
   "description": "Plugin for evrythng.js that adds local communication with THNGHUB.",
   "main": "dist/evrythng-hub.js",
   "jsnext:main": "dist/evrythng-hub.es6.js",
