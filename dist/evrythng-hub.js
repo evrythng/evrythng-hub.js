@@ -27,7 +27,12 @@
 // Can be used on top of evrythng-ws.js and evrythng-mqtt.js to provide
 // the ability to connect to local WS and MQTT servers as well.
 
-// Supports local encryption mechanism of a Thng-Hub.
+// ### Encryption
+
+// evrythng-hub.js fetches the distributed hub configuration from the cloud
+// on request. The user can then specify which hub they want to use as
+// the local gateway. The plugin uses the configuration specified in the
+// Hub's custom fields, including encryption.
 
 (function (root, factory) {
   'use strict';
@@ -97,6 +102,7 @@
   } else {
 
     // Browser globals
+
     root.EVT.Hub = root.Evrythng.Hub = factory(undefined, root.EVT.WS, root.KJUR, root.nodeJose);
 
   }
@@ -104,34 +110,18 @@
 }(this, function (MQTT, WS, JWT, Jose) {
   'use strict';
 
-  var version = '1.3.0';
+  var version = '2.0.0';
 
   // Setup default settings:
 
-  // - _**httpApiUrl**: Local Thng-Hub HTTP API URL_
-  // - _**mqttApiUrl**: Local Thng-Hub MQTT API URL_
-  // - _**wsApiUrl**: Local Thng-Hub Web Socket API URL_
   // - _**timeout**: Timeout in milliseconds for local requests, before switching to remote_
   // - _**remote**: Explicitly switch the requests to use the default remote/cloud URLs_
-  // - _**secure**: Enable/disable encryption when talking to the Thng-Hub Local API (REST, MQTT, WS).
-  // Secure mode requires hubId to be defined. When enabled, should specify what to encrypt
-  // (`secure: true` enables both request and response encryption):_
-  //    - _**secure.request**: encrypt requests_
-  //    - _**secure.response**: decrypt responses_
-  // - _**hubId**: Thng ID that corresponds to Hub_.
+  // - _**targetHub**: Hub to be used as local gateway_.
   var defaultSettings = {
-    httpApiUrl: 'http://localhost:8787',
-    mqttApiUrl: 'mqtt://localhost:4001/mqtt',
-    wsApiUrl: 'ws://localhost:4000/mqtt',
     timeout: 1000,
     remote: false,
-    secure: {
-      request: true,
-      response: false
-    },
-    hubId: null
+    targetHub: null
   };
-
 
   // List of local endpoints supported by thng-hub. We use paths checking
   // on the global EVT.api() method, instead of patching all resources
@@ -188,53 +178,50 @@
     }
   ];
 
-  function _isObject(obj) {
+  // Pubsub plugin used in conjunction with the Hub.
+  var pubSubPlugin = MQTT || WS;
+
+  // Cached map for {'apiKey': {'hubId': 'encryptedApiKey'} }
+  var encryptedKeyMap = {};
+
+
+  // Check if a variable is an Object
+  function isObject(obj) {
     return Object.prototype.toString.call(obj) === '[object Object]';
   }
 
-  // Generate a unique id. Useful for creating
-  // jti claim in jsonwebtoken.
-  //
-  // @return String
+  // Build url based on protocol, ip and port.
+  function buildUrl(protocol, ip, port) {
+    var url = protocol + '://' + ip + ':' + port;
+    if(protocol !== 'http'){
+      url += '/mqtt';
+    }
+    return url;
+  }
 
+  // Generate a unique id to create a jti claim in jsonwebtoken.
   function generateId() {
     return Jose.util.base64url.encode(Jose.util.randomBytes(32));
   }
 
-
-  // Init secret key. Needed for
-  // encryption/decryption.
-  //
-  // @return Promise
-
+  // Init secret key. Needed for encryption/decryption.
   function initSecretKey(key) {
     return Jose.JWK.asKey(key);
   }
 
-
   // Create encryption (JWE).
-  //
-  // @return Promise
-
   function encrypt(input, key, options) {
-    options = options || {};
-
-    if (_isObject(input)) {
+    if (isObject(input)) {
       input = JSON.stringify(input);
     }
 
     return Jose.JWE
-      .createEncrypt(options, key)
+      .createEncrypt(options || {}, key)
       .update(input)
       .final();
   }
 
-
-  // Create decryption (JWE). Resolved with
-  // plaintext field of a result.
-  //
-  // @return Promise
-
+  // Create decryption (JWE). Resolved with plaintext of the result.
   function decrypt(input, key) {
     return Jose.JWE
       .createDecrypt(key)
@@ -244,16 +231,9 @@
       });
   }
 
-
-  // Create a jsonwebtoken and sign it using
-  // secret key ID.
-  // Algorithm used 'HS256'.
-  //
-  // @return String
-
+  // Create a jsonwebtoken and sign it using secret key ID.
   function createJWT(options, kid) {
     var header = {alg: 'HS256', typ: 'JWT'};
-
     var claims = {
       iss: options.iss,
       aud: options.aud,
@@ -262,16 +242,10 @@
       data: options.data
     };
 
-    return JWT.jws.JWS
-      .sign('HS256', JSON.stringify(header), JSON.stringify(claims), kid);
+    return JWT.jws.JWS.sign('HS256', JSON.stringify(header), JSON.stringify(claims), kid);
   }
 
-
   // Verify signature and validate a jsonwebtoken.
-  // Algorithm used 'HS256'.
-  //
-  // @return Boolean
-
   function verifyJWT(input, kid, validateOptions) {
     validateOptions = validateOptions || {};
     validateOptions.alg = ['HS256'];
@@ -279,11 +253,7 @@
     return JWT.jws.JWS.verifyJWT(input, kid, validateOptions);
   }
 
-
   // Split JWT into header and payload, decode them.
-  //
-  // @return Object
-
   function decodeJWT(input) {
     input = input.split('.');
 
@@ -293,21 +263,12 @@
     };
   }
 
-
   // Syntax sugar for encrypting header.
-  //
-  // @return Promise
-
-  function encryptHeader(header, secretKey) {
-    return encrypt(header, secretKey, { format: 'compact' });
+  function encryptAuthorization(authorization, secretKey) {
+    return encrypt(authorization, secretKey, { format: 'compact' });
   }
 
-
-  // Syntax sugar for encrypting payload.
-  // Create jwt first, then encrypt.
-  //
-  // @return Promise
-
+  // Create jwt first, then encrypt payload.
   function encryptPayload(payload, secretKey, options) {
     var jwt = createJWT({
       iss: options.iss,
@@ -319,32 +280,46 @@
     return encrypt(jwt, secretKey);
   }
 
-
-  // Syntax sugar for decrypting payload.
-  // Decrypt the payload first, then verify
-  // jsonwebtoken and decode it.
-  //
-  // @return Promise
-
+  // Decrypt the payload first, then verify jsonwebtoken and decode it.
   function decryptPayload(payload, secretKey, options) {
-    return decrypt(payload, secretKey).then(function (jwt) {
-      var isValid = verifyJWT(jwt, secretKey.kid, {
-        iss: [options.iss],
-        aud: [options.aud],
-        sub: [options.sub]
-      });
+    return decrypt(payload, secretKey)
+      .then(function (jwt) {
+        var isValid = verifyJWT(jwt, secretKey.kid, {
+          iss: [options.iss],
+          aud: [options.aud],
+          sub: [options.sub]
+        });
 
-      if (isValid) {
-        return decodeJWT(jwt).payload.data;
-      } else {
-        throw new Error('Unable to verify jsonwebtoken');
-      }
-    });
+        if (isValid) {
+          return decodeJWT(jwt).payload.data;
+        } else {
+          throw new Error('Unable to verify jsonwebtoken.');
+        }
+      });
   }
 
-
+  // Decode base64 string.
   function decode(input) {
     return Jose.util.base64url.decode(input, 'utf8');
+  }
+
+  // Check if url and method are supported by the hub endpoints.
+  function isSupported(url, method) {
+    method = method || 'get';
+
+    // Get only the path (no query strings, etc.)
+    var path = /^(.*?)(\?|$)/.exec(url)[1];
+
+    // Check if it is a local request. Path and method should
+    // exist in the mapping above.
+    for (var i = 0; i < localEndpoints.length; i++) {
+      if (localEndpoints[i].path.test(path) &&
+        localEndpoints[i].method.indexOf(method) !== -1) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
 
@@ -355,29 +330,8 @@
 
     settings: defaultSettings,
 
-    // Setup new settings.
     setup: function (customSettings) {
-
-      function validateSettings(settings) {
-
-        // Secure mode requires hubId to be defined, as well as
-        // jsrsasign and node-jose(-browserified) to be installed.
-        if (settings.secure && !settings.hubId) {
-
-          console.warn('[EvrythngJS Hub] hubId option required for enabling secure mode');
-          settings.secure = false;
-
-        } else if (settings.secure && settings.hubId && !(JWT && Jose)) {
-
-          console.warn('[EvrythngJS Hub] jsrsasign and node-jose(-browserified) required for enabling secure mode');
-          settings.secure = false;
-
-        }
-
-        return settings;
-      }
-
-      if (_isObject(customSettings)) {
+      if (isObject(customSettings)) {
 
         // Override default settings with new ones
         for (var i in customSettings) {
@@ -390,335 +344,345 @@
         throw new TypeError('Setup should be called with an options object.');
       }
 
-      return validateSettings(this.settings);
+      // Init secret key if setting up a new targetHub
+      if(customSettings.targetHub && customSettings.targetHub.customFields.key){
+        this.settings.targetHub.customFields.secretKey =
+          initSecretKey(customSettings.targetHub.customFields.key);
+      }
+
+      return this.settings;
     },
 
-    install: function (EVT, Resource) {
-      var $this = this,
-        pubSubPlugin = MQTT || WS,
-
-        hubThng = null,
-        secretKey = null,
-
-        encryptedKeyMap = {},
-        encryptedKeyPromiseMap = {};
-
+    install: function (EVT, Scope, Resource, Utils, Logger) {
+      var $this = this;
       var original = {
         api: EVT.api,
         subscribe: Resource.prototype.subscribe,
         publish: Resource.prototype.publish
       };
 
-      function localApi(options) {
-        var args = arguments;
-
-        var interceptors = [{
-          request: getUrl // Check if url is supported by hub
-        }, {
-          request: getThng // Load hub thng (secure mode)
-        }, {
-          request: getSecretKey // Load secret key from a thng (secure mode)
-        }, {
-          request: buildEncrypted // Encrypt apiKey/payload (secure mode)
-        }];
-
-        options.interceptors = interceptors.concat(options.interceptors || []).concat(EVT.settings.interceptors || []);
-
-        return original.api.apply(EVT, args)
-          .catch(function (err) {
-
-            // Request has been cancelled by pubSub plugin.
-            // Do nothing.
-            if (pubSubPlugin && err && err.cancelled) {
-              return;
-            }
-
-            console.info('[EvrythngJS Hub] Local endpoint failed: ', err);
-            console.info('[EvrythngJS Hub] Switching to remote endpoint...');
-
-            // Local REST is not available. Switch to remote.
-            delete options.apiUrl;
-            delete options.timeout;
-            options.interceptors = [];
-
-            return original.api.apply(EVT, args);
-          });
-      }
-
-      function localPubSub(method) {
-        return function () {
-          if ($this.settings.remote) {
-            return original[method].apply(this, arguments);
-          }
-
-          var remoteApiUrl = pubSubPlugin.settings.apiUrl,
-            localApiUrl = pubSubPlugin === MQTT ? $this.settings.mqttApiUrl : $this.settings.wsApiUrl,
-            $resource = this,
-            args = arguments,
-            cachedCallback = args[0],
-            cachedApiKey,
-            apiKey;
-
-          cachedApiKey = isEncryptedKey($resource.scope.apiKey) ?
-            encryptedKeyMap[$resource.scope.apiKey] : $resource.scope.apiKey;
-
-          var interceptors = [{
-            request: getThng
-          }, {
-            request: getSecretKey
-          }, {
-            request: buildEncrypted
-          }, {
-            request: function (options, cancel) {
-              apiKey = options.headers.authorization;
-              cancel();
-            }
-          }];
-
-          // Get encrypted apiKey by calling .api() with
-          // request interceptors.
-          return original.api({
-            authorization: $resource.scope.apiKey,
-            remote: false,
-            secure: $this.settings.secure,
-            interceptors: interceptors
-          }).catch(function () {
-
-            $resource.scope.apiKey = apiKey;
-
-            pubSubPlugin.setup({
-              apiUrl: localApiUrl
-            });
-
-            // Decrypt message before calling message callback.
-            if (isResponseSecure($this.settings) && method === 'subscribe') {
-              args[0] = secureCallback(args[0], {
-                url: $resource.path,
-                authorization: cachedApiKey
-              });
-            }
-
-            return original[method].apply($resource, args)
-              .catch(function (err) {
-
-                // Switch to remote.
-                pubSubPlugin.setup({
-                  apiUrl: remoteApiUrl
-                });
-
-                // Restore cached callback.
-                if (isResponseSecure($this.settings) && method === 'subscribe') {
-                  args[0] = cachedCallback;
-                }
-
-                // Restore cached apiKey.
-                $resource.scope.apiKey = cachedApiKey;
-
-                console.info('[EvrythngJS Hub] Local endpoint failed: ', err);
-                console.info('[EvrythngJS Hub] Switching to remote endpoint...');
-
-                return original[method].apply($resource, args);
-              });
-          });
-        };
-      }
-
       EVT.api = localApi;
+      Scope.prototype.getAvailableHubs = getAvailableHubs;
 
-      // Patch Pubsub methods.
-      // Unsubscribe does not create any connection.
+      // Patch Pubsub methods. Unsubscribe does not create any connection.
       if (pubSubPlugin) {
         Resource.prototype.subscribe = localPubSub('subscribe');
         Resource.prototype.publish = localPubSub('publish');
       }
 
-      function getUrl(options) {
-        if (isRemote(options)) {
-          return options;
-        } else if (supportedByHub(options)) {
 
-          // Use local request settings
-          options.apiUrl = $this.settings.httpApiUrl;
-          options.timeout = $this.settings.timeout;
-        }
-        return options;
-      }
+      // PATCHES
 
-      function getThng(options) {
-        if (!isSecure(options) || isRemote(options)) {
-          return options;
-        }
+      function localApi(options) {
+        var args = arguments;
+        var previousInterceptors = (options.interceptors || [])
+          .concat(EVT.settings.interceptors || []);
 
-        if (!hubThng) {
-          hubThng = original.api({
-            url: '/thngs/' + $this.settings.hubId,
-            interceptors: [],
-            authorization: options.authorization
+        var interceptors = [{
+          request: filterRemoteRequest
+        }, {
+          request: getRequestConfig('http')
+        }, {
+          request: buildEncrypted
+        }, {
+          request: function (opts) {
+            if(!opts.remote) {
+              opts.timeout = $this.settings.timeout;
+            }
+          }
+        }];
+
+        options.interceptors = previousInterceptors.concat(interceptors);
+
+        return original.api.apply(EVT, args)
+          .catch(function (err) {
+
+            // Request has been cancelled by pubSub plugin. Do nothing.
+            if (pubSubPlugin && err && err.cancelled) {
+              return;
+            }
+
+            // Local REST is not available. Switch to remote.
+            // Allow local requests to fail (404, 400, etc.)
+            // without falling back to remote.
+            if(err && err.status === 0){
+              Logger.info('Local hub is unavailable. Switching to remote...');
+
+              delete options.timeout;
+              options.interceptors = previousInterceptors;
+
+              return original.api.apply(EVT, args);
+            } else {
+              throw err;
+            }
+
           });
-        }
+      }
 
+      function localPubSub(method) {
+        return function () {
+          var args = Array.prototype.slice.call(arguments),
+            $resource = this,
+            protocol = pubSubPlugin === MQTT? 'mqtt' : 'ws',
+            remoteOptions = {
+              apiUrl: pubSubPlugin.settings.apiUrl,
+              url: $resource.path,
+              authorization: $resource.scope.apiKey,
+              targetHub: $this.settings.targetHub
+            },
+            options = {},
+            cachedData = args[0];
+
+          var interceptors = [{
+            request: filterRemoteRequest
+          }, {
+            request: getRequestConfig(protocol)
+          }, {
+            request: buildEncrypted
+          }, {
+            request: function (opts, cancel) {
+              Utils.extend(options, opts, true);
+              cancel();
+            }
+          }];
+
+          // Get configuration and encrypted options by calling .api()
+          // with request interceptors.
+          return original.api({
+            authorization: $resource.scope.apiKey,
+            url: $resource.path,
+            interceptors: interceptors
+          }).catch(function () {
+
+            if(!options.remote){
+              var connectOptions = {
+                authorization: options.headers.authorization,
+                apiUrl: options.apiUrl
+              };
+
+              // Add connect options in second argument.
+              // First is always the callback (subscribe) or
+              // the message (publish).
+              if(Utils.isFunction(args[1])){
+                args.splice(1, 0, connectOptions);
+              } else {
+                args[1] = Utils.extend(args[1], connectOptions);
+              }
+
+              // Decrypt message before calling message callback.
+              if (method === 'subscribe' && $this.settings.targetHub.customFields.security.response) {
+                args[0] = secureCallback(args[0], remoteOptions);
+              }
+            }
+
+            return original[method].apply($resource, args)
+              .catch(function () {
+
+                // Local PubSub is not available. Switch to remote.
+                Logger.info('Local hub is unavailable. Switching to remote...');
+
+                // Reset connectOptions and data/callback.
+                args[0] = cachedData;
+                args[1] = {};
+
+                return original[method].apply($resource, args);
+              });
+
+          });
+        };
+      }
+
+      function getAvailableHubs() {
+        // This runs in the context of a Scope which contains an apiKey.
+        return Promise.resolve()
+          .then(getDistributedCollectionId(this.apiKey))
+          .then(getDistributedHubs(this.apiKey));
+      }
+
+
+      // INTERCEPTORS
+
+      // Check if url is supported and return regex object.
+      function filterRemoteRequest(options) {
+        options.remote = isRemote(options) || !isSupported(options.url, options.method);
         return options;
       }
 
-      function getSecretKey(options) {
-        if (!hubThng) {
-          return options;
-        }
-
-        return hubThng.then(function (thng) {
-          if (hasSecretKey(thng)) {
-            secretKey = initSecretKey(thng.customFields.key);
-          }
-
-          return options;
-        });
-      }
-
-      // TODO convert to EncryptionInterceptor object with both
-      // request and response interceptors
-      function buildEncrypted(options) {
-        if (!secretKey) {
-          return options;
-        }
-
-        return secretKey.then(function (key) {
-          var promises = [],
-            cachedOptions = {};
-
-          if (isEncryptedKey(options.authorization)) {
-            promises.push(Promise.resolve(options.authorization));
-            options.authorization = encryptedKeyMap[options.authorization];
-          } else {
-            promises.push(getEncryptedKey(options.authorization, key));
-          }
-
-          // Cache original apiKey and url. We are going to need this
-          // for jwt validation.
-          cachedOptions.authorization = options.authorization;
-          cachedOptions.url = options.url;
-
-          if (options.data) {
-            promises.push(encryptPayload(options.data, key, {
-              iss: options.authorization,
-              aud: $this.settings.hubId,
-              sub: options.url
-            }));
-          }
-
-          return Promise.all(promises).then(function (encrypted) {
-            options.headers.authorization = encrypted[0];
-
-            if (!encryptedKeyMap[options.authorization]) {
-              encryptedKeyMap[encrypted[0]] = options.authorization;
-            }
-
-            if (options.data) {
-              options.data = encrypted[1];
-            }
-
-            if(isResponseSecure(options)){
-              options.interceptors = [{
-                response: function(res) {
-                  return buildDecrypted(res, cachedOptions);
-                }
-              }];
-            }
-
+      // Get hub configuration and apiUrl for protocol.
+      function getRequestConfig(protocol){
+        return function (options) {
+          if(options.remote){
             return options;
-          });
+          }
+
+          if(!$this.settings.targetHub){
+            throw new Error('There is no "targetHub" property in the settings.');
+          }
+
+          options.apiUrl = buildUrl(
+            protocol,
+            $this.settings.targetHub.customFields.ip.v4,
+            $this.settings.targetHub.customFields.ports[protocol]
+          );
+          return options;
+        };
+      }
+
+      // Encrypt apiKey/payload (secure mode)
+      function buildEncrypted(options) {
+        // is remote, or there is no security
+        if (options.remote ||
+          !($this.settings.targetHub.customFields.security.request ||
+          $this.settings.targetHub.customFields.security.response)) {
+          return options;
+        }
+
+        if(!$this.settings.targetHub.customFields.secretKey){
+          throw new Error('THNGHUB=[' + $this.settings.targetHub.id + '] requires ' +
+            'encryption, but there is no encryption key.');
+        }
+
+        var originalOptions = {
+          authorization: options.authorization,
+          url: options.url,
+          targetHub: $this.settings.targetHub
+        };
+
+        return Promise.all([
+          encryptApiKey(options.authorization, options),
+          encryptData(options.data, options)
+        ]).then(function (encrypted) {
+          var encryptedKey = encrypted[0];
+          var encryptedData = encrypted[1];
+
+          options.headers.authorization = encryptedKey;
+          if(encryptedData) {
+            options.data = encryptedData;
+          }
+
+          // Add response interceptor with closure to original options.
+          if($this.settings.targetHub.customFields.security.response){
+            options.interceptors = [{
+              response: function(res) {
+                return decryptData(res, originalOptions);
+              }
+            }];
+          }
+
+          return options;
         });
       }
 
-      function buildDecrypted(res, options) {
-        if (res) {
-          return secretKey.then(function (key) {
-            return decryptPayload(res, key, {
-              aud: options.authorization,
-              iss: $this.settings.hubId,
-              sub: options.url
-            }).then(function (decrypted) {
-              return decrypted;
-            });
-          });
-        }
-      }
 
+      // HELPERS
+
+      // Returns current option's remote setting or the global setting.
       function isRemote(options) {
         return options.remote !== undefined ? options.remote : $this.settings.remote;
       }
 
-      function getSecurityOption(options) {
-        return options.secure !== undefined ? options.secure : $this.settings.secure;
+      // Get distrubuted collection from cloud using scope's apiKey.
+      function getDistributedCollectionId(apiKey) {
+        return function () {
+          return original.api({
+            url: '/collections',
+            params: { filter: 'tags=HubDistribution' },
+            authorization: apiKey
+          }).then(function (cols) {
+            if(!cols.length) {
+              throw new Error('There is no distributed collection in this project.');
+            }
+            return cols[0].id;
+          });
+        };
       }
 
-      function isRequestSecure(options) {
-        var secure = getSecurityOption(options);
-        return secure === true || secure.request;
-      }
+      // Get all hubs from distributed collection using scope's apiKey.
+      function getDistributedHubs(apiKey) {
+        return function (collectionId) {
+          return original.api({
+            url: '/collections/' + collectionId + '/thngs',
+            authorization: apiKey
+          }).then(function (thngs) {
+            if(!thngs.length) {
+              throw new Error('There are no THNGHUBS in the distributed collection.');
+            }
 
-      function isResponseSecure(options) {
-        var secure = getSecurityOption(options);
-        return secure === true || secure.response;
-      }
-
-      function isSecure(options) {
-        return isRequestSecure(options) || isResponseSecure(options);
-      }
-
-      function isEncryptedKey(key) {
-        return key.indexOf('.') > -1;
-      }
-
-      function getEncryptedKey(apiKey, secret) {
-        if (encryptedKeyPromiseMap[apiKey]) {
-          return encryptedKeyPromiseMap[apiKey];
-        }
-
-        var encryptedKeyPromise = encryptHeader(apiKey, secret);
-
-        encryptedKeyPromiseMap[apiKey] = encryptedKeyPromise;
-
-        return encryptedKeyPromise;
-      }
-
-      function supportedByHub(options) {
-
-        // Get only the path (no query strings, etc.)
-        var path = /^(.*?)(\?|$)/.exec(options.url)[1],
-          method = options.method || 'get';
-
-        // Check if it is a local request. Path and method should exist
-        // in the mapping above.
-        for (var i = 0; i < localEndpoints.length; i++) {
-          if (localEndpoints[i].path.test(path) && localEndpoints[i].method.indexOf(method) !== -1) {
-            break;
-          }
-        }
-
-        return (i < localEndpoints.length);
-      }
-
-      function hasSecretKey(entity) {
-        return entity && entity.customFields && _isObject(entity.customFields.key);
-      }
-
-      function secureCallback(cb, options) {
-        return function (msg) {
-          var resource = msg.resource;
-
-          return secretKey.then(function (key) {
-            return decryptPayload(msg, key, {
-              aud: options.authorization,
-              iss: $this.settings.hubId,
-              sub: options.url
-            }).then(function (decrypted) {
-              return cb(resource.parse(decrypted));
+            // Only return hubs that are connected
+            return thngs.filter(function (hub) {
+              return hub.properties['~connected'];
             });
           });
         };
       }
-    }
 
+      // Encrypt apiKey or get from cache.
+      function encryptApiKey(apiKey, options) {
+        if(encryptedKeyMap[apiKey] &&
+          encryptedKeyMap[apiKey][$this.settings.targetHub.id]){
+          // pre cached key for this hub
+          return Promise.resolve(encryptedKeyMap[apiKey][$this.settings.targetHub.id]);
+        } else {
+          // encrypt and cache key for this hub
+          return $this.settings.targetHub.customFields.secretKey
+            .then(function (secretKey) {
+              return encryptAuthorization(apiKey, secretKey);
+            })
+            .then(function (encryptedApiKey) {
+              encryptedKeyMap[apiKey] = encryptedKeyMap[options.authorization] || {};
+              encryptedKeyMap[apiKey][$this.settings.targetHub.id] = encryptedApiKey;
+              return encryptedApiKey;
+            });
+        }
+      }
+
+      // Encrypt data if any.
+      function encryptData(data, options) {
+        if(data){
+          return $this.settings.targetHub.customFields.secretKey
+            .then(function (secretKey) {
+              return encryptPayload(data, secretKey, {
+                iss: options.authorization,
+                aud: $this.settings.targetHub.id,
+                sub: options.url
+              });
+            });
+        }
+      }
+
+      // Decrypt data if any.
+      function decryptData(data, options) {
+        if (data) {
+          return $this.settings.targetHub.customFields.secretKey
+            .then(function (secretKey) {
+              return decryptPayload(data, secretKey, {
+                aud: options.authorization,
+                iss: options.targetHub.id,
+                sub: options.url
+              });
+            });
+        }
+      }
+
+      // Decrypt payload on subscription callbacks in secure environments
+      function secureCallback(cb, options) {
+        return function (msg) {
+          var resource = msg.resource;
+
+          return $this.settings.targetHub.customFields.secretKey
+            .then(function (secretKey) {
+              return decryptPayload(msg, secretKey, {
+                aud: options.authorization,
+                iss: options.targetHub.id,
+                sub: options.url
+              });
+            }).then(function (decrypted) {
+              return cb(resource.parse(decrypted));
+            });
+        };
+      }
+
+    }
   };
 
   // Attach useful utils methods to the plugin.
@@ -731,14 +695,14 @@
       createJWT: createJWT,
       verifyJWT: verifyJWT,
       decodeJWT: decodeJWT,
-      encryptHeader: encryptHeader,
+      encryptAuthorization: encryptAuthorization,
       encryptPayload: encryptPayload,
       decryptPayload: decryptPayload
     };
   }
 
   // Modules that this plugin requires. Injected into the install method.
-  EVTHubPlugin.$inject = ['core', 'resource'];
+  EVTHubPlugin.$inject = ['core', 'scope/scope', 'resource', 'utils', 'logger'];
 
   return EVTHubPlugin;
 

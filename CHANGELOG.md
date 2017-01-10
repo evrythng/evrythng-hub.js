@@ -1,3 +1,14 @@
+# v2.0.0 (10-01-2017)
+
+## Breaking changes
+
+- **Options**: `hubId`, `httpApiUrl`, `wsApiUrl`, `mqttApiUrl` and `secure` options have been removed. 
+This information is now automatically setup when configuring the `targetHub` property.
+
+## Features
+
+- **getAvailableHubs**: Add `.getAvailabHubs` method to all scopes to get a list of available hubs in the project.
+
 # v1.3.0 (20-10-2016)
 
 ## Features
@@ -8,7 +19,7 @@
 
 ## Bug fixes
 
-- **Interceptors**: merge globally defined interceptors
+- **Interceptors**: Merge globally defined interceptors
 
 # v1.2.2 (04-05-2016)
 
