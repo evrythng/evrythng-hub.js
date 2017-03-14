@@ -30,12 +30,12 @@ See [Usage](#usage) below for more details.
 
 Add the script tag into your HTML page:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub-2.0.0.min.js"></script>
+    <script src="//cdn.evrythng.com/toolkit/evrythng-js-sdk/evrythng-hub-2.0.0.min.js"></script>
  
 Or always get the last release:
 
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
-    <script src="//cdn.evrythng.net/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
+    <script src="//cdn.evrythng.com/toolkit/evrythng-js-sdk/evrythng-hub.js"></script>
+    <script src="//cdn.evrythng.com/toolkit/evrythng-js-sdk/evrythng-hub.min.js"></script>
     
 For HTTPS you need to use:
 
