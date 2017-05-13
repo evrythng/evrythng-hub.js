@@ -89,9 +89,9 @@ EVT.use(EVT.Hub);
 
 #### General
 
-After loading the plugin, using any of the methods above, and before starting to communicate with a 
-THNGHUB, you need to setup the `targetHub` setting hub Thng that you want to talk to. Usually there
-will be a single THNGHUB in the environment, though. The plugin provides an easy way to fetch the list 
+After loading the plugin using any of the methods above, and before starting to communicate with a 
+THNGHUB, you need to setup the `targetHub` setting, indicating the hub that you want to talk to. Usually there
+will be a single THNGHUB in the environment. The plugin provides an easy way to fetch the list 
 of the  available hubs in the current project/context:
 
 ```javascript
@@ -108,7 +108,7 @@ var user = new EVT.User('USER_API_KEY');
 
 user.getAvailableHubs().then(function(hubs) {
 
-  EVT.Hub.setup({
+  Hub.setup({
     targetHub: hubs[0]
   });
 
